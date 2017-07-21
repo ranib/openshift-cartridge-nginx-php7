@@ -1,5 +1,5 @@
 # OPENSHIFT Nginx PHP 7 Cartridge
-<img src="https://raw.githubusercontent.com/budisteikul/openshift-cartridge-nginx-php7/master/usr/openshift-redhat.jpg"><br />Welcome to the world of [PHP-FPM](http://php.net/manual/en/book.fpm.php) within [OPENSHIFT](https://www.openshift.com/) by [REDHAT](https://www.redhat.com/en).
+<img src="https://raw.githubusercontent.com/ranib/openshift-cartridge-nginx-php7/master/usr/openshift-redhat.jpg"><br />Welcome to the world of [PHP-FPM](http://php.net/manual/en/book.fpm.php) within [OPENSHIFT](https://www.openshift.com/) by [REDHAT](https://www.redhat.com/en).
 
 ## What's inside
 
@@ -9,12 +9,12 @@
 
 ## Installation
 ### Web Console
-Click [here](https://openshift.redhat.com/app/console/application_type/custom?unlock=true&application_type%5Bcartridges%5D=http%3A%2F%2Fcartreflect-claytondev.rhcloud.com%2Fgithub%2Fbudisteikul%2Fopenshift-cartridge-nginx-php7) for installation via web console. <br />
-Alternatively, you can use this [cartridge definition](http://cartreflect-claytondev.rhcloud.com/github/budisteikul/openshift-cartridge-nginx-php7) on application creation page.
+Click [here](https://openshift.redhat.com/app/console/application_type/custom?unlock=true&application_type%5Bcartridges%5D=http%3A%2F%2Fcartreflect-claytondev.rhcloud.com%2Fgithub%2Franib%2Fopenshift-cartridge-nginx-php7) for installation via web console. <br />
+Alternatively, you can use this [cartridge definition](http://cartreflect-claytondev.rhcloud.com/github/ranib/openshift-cartridge-nginx-php7) on application creation page.
 
 ### Command Line
 ```
-rhc app create appname http://cartreflect-claytondev.rhcloud.com/github/budisteikul/openshift-cartridge-nginx-php7
+rhc app create appname http://cartreflect-claytondev.rhcloud.com/github/ranib/openshift-cartridge-nginx-php7
 ```
 ## Updates
 You can update the binaries from the cartridge without reinstalling. To check for updates, SSH to your app and run this command:
@@ -92,8 +92,9 @@ server {
     	fastcgi_param PATH_INFO $fastcgi_script_name;
     	include <%= ENV['OPENSHIFT_PHP_DIR'] %>/usr/conf/fastcgi_params;
 	}
+	# Add trailing slash to */wp-admin requests.
+		rewrite /wp-admin$ $scheme://$host$uri/ permanent;
 }
-
 ```
 
 ### PHP-FPM
