@@ -130,3 +130,82 @@ This cartridge comes with different scripts for easy management of your app insi
 * `php-pecl` - To install/uninstall pecl extension.
     * `php-pecl install <name> <ver>` - Install pecl extension
     * `php-pecl uninstall <name>` - Uninstall pecl extension
+
+## Build nginx wordpress
+##### 1. To create an app:
+```
+# create (if scalable with -s) nginx app with php cartridge
+`$ rhc create-app <yourapp> http://cartreflect-claytondev.rhcloud.com/github/ranib/openshift-cartridge-nginx-php7 <-s>`
+	
+# add database
+for MySQL 5.7.17 use this repo
+`$ rhc cartridge add -a <yourapp> https://raw.githubusercontent.com/icflorescu/openshift-cartridge-mysql/master/metadata/manifest.yml`
+OR MySQL 5.5
+`$ rhc cartridge add mysql-5.5 -a <yourapp>`
+	
+# add phpmyadmin
+`$ rhc cartridge add phpmyadmin-4 -a <yourapp>`
+	
+# **Only if you want to use Redis 3.2.9 for Object cache**
+`$ rhc cartridge add -a <yourapp> http://cartreflect-claytondev.rhcloud.com/reflect?github=ranib/openshift-redis-cart`
+```
+##### 2. To add Wordpress:
+```
+# **Only if you don't have local copy of <yourapp> created above**
+`$ git clone <git-uri yourapp>`
+# then change to <yourapp> dir
+`$ cd <yourapp>`
+`$ git remote add upstream https://github.com/ranib/wordpress-example`
+	for scalable (app created using -s)
+	`$ git remote add upstream https://github.com/ranib/openshift-scalable-wordpress`
+`$ git pull upstream master`
+```
+#### 3.	Example wp-config.php for Debugging
+The following code, inserted in your wp-config.php file, will log all errors, notices, and warnings to a file called debug.log in the wp-content directory. It will also hide the errors so they do not interrupt page generation.
+```
+// Enable WP_DEBUG mode
+define( 'WP_DEBUG', true );
+
+// Enable Debug logging to the /wp-content/debug.log file
+define( 'WP_DEBUG_LOG', true );
+
+// Disable display of errors and warnings 
+define( 'WP_DEBUG_DISPLAY', false );
+@ini_set( 'display_errors', 0 );
+
+// Use dev versions of core JS and CSS files (only needed if you are modifying these core files)
+define( 'SCRIPT_DEBUG', true );
+```	
+##### 4. in wp-config.php and change 'true' to 'false'(no SSL) in the line below
+```
+define('FORCE_SSL_ADMIN', false);
+
+`or add after the line (SSL will be limited to rhcloud domain, will have to get SSL Cert for custom domain)`
+
+define(‘FORCE_SSL_LOGIN’, true);
+```
+##### 5. in wp-config.php file MUST add
+```
+/** In Nginx, to resolve "You do not have sufficient permissions to access this page" error after http(s) SSL login */
+if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https')
+	$_SERVER['HTTPS'] = 'on';
+```
+##### 6. in wp-config.php file add (before line /* That's all, stop editing! Happy blogging. */)
+```
+/** Woocommerce plugin recommends to increase WP Memory Limit to 128MB */
+define( 'WP_MEMORY_LIMIT', '128M' );
+
+/** path to fastcgi cache directory for Nginx Helper plugin */
+define('RT_WP_NGINX_HELPER_CACHE_PATH', getenv('OPENSHIFT_TMP_DIR').'/nginx-cache');
+```
+##### 7. fix conflicts (if any) and edit (root directory) in action_hooks/deploy
+##### may have to run this command to make action_hooks/build executable
+```
+$ git update-index --chmod=+x --add .openshift/action_hooks/*
+```
+##### 8. then commit
+```
+`$ git add -A`
+`$ git commit -am 'install wordpress'`
+`$ git push`
+```
