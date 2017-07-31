@@ -1,8 +1,10 @@
 # OPENSHIFT Nginx PHP 7 Cartridge
 <img src="https://raw.githubusercontent.com/ranib/openshift-cartridge-nginx-php7/master/usr/openshift-redhat.jpg"><br />Welcome to the world of [PHP-FPM](http://php.net/manual/en/book.fpm.php) within [OPENSHIFT](https://www.openshift.com/) by [REDHAT](https://www.redhat.com/en).
 
-## What's inside
+#OPENSHIFT Nginx PHP 7 Cartridge
+<img src="https://raw.githubusercontent.com/ranib/openshift-cartridge-nginx-php7/master/usr/openshift-redhat.jpg"><br />Welcome to the world of [PHP-FPM](http://php.net/manual/en/book.fpm.php) within [OPENSHIFT](https://www.openshift.com/) by [REDHAT](https://www.redhat.com/en).
 
+## What's inside
 * Nginx: 1.13.3
 * PHP: 7.1.7
 * Latest Composer
@@ -18,7 +20,6 @@ rhc app create <yourapp> http://cartreflect-claytondev.rhcloud.com/github/ranib/
 ```
 ## Updates
 You can update the binaries from the cartridge without reinstalling. To check for updates, SSH to your app and run this command:
-
 ```
 update
 ```
@@ -96,7 +97,6 @@ server {
 		rewrite /wp-admin$ $scheme://$host$uri/ permanent;
 }
 ```
-
 ### PHP-FPM
 PHP-FPM will automatically load `.openshift/php-fpm.ini.erb`, `.openshift/php-fpm.conf.erb`, and `.openshift/extension.ini.erb` files.
 
