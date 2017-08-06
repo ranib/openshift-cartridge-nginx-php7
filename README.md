@@ -6,7 +6,7 @@
 
 ## What's inside
 * Nginx: 1.13.3
-* PHP: 7.1.7
+* PHP: 7.1.8
 * Latest Composer
 
 ## Installation
@@ -110,10 +110,11 @@ Example :
 ```
 php-pecl install apcu 5.1.5
 php-pecl install mongodb 1.1.7
+php-pecl install redis 3.1.3
 php-pecl uninstall apcu
 php-pecl uninstall mongodb
+php-pecl uninstall redis
 ```
-
 ## Scripts
 This cartridge comes with different scripts for easy management of your app inside SSH.
 
@@ -134,14 +135,10 @@ This cartridge comes with different scripts for easy management of your app insi
 
 ## Build nginx wordpress
 ### 1. create an app:
-#### (1.1) create nginx app with php cartridge (if scalable with -s, otherwise remove -s)
+#### (1.1) create nginx app with php cartridge (if scalable, require more than 1 gear, use -s, otherwise remove -s)
 ```BASH
-$ rhc create-app <yourapp> http://cartreflect-claytondev.rhcloud.com/github/ranib/openshift-cartridge-nginx <-s> http://cartreflect-claytondev.rhcloud.com/github/ranib/openshift-cartridge-php
+$ rhc create-app <yourapp> http://cartreflect-claytondev.rhcloud.com/github/ranib/openshift-cartridge-nginx-php7 <-s>
 ```
-or add php to existing nginx app (if already created)
-```BASH
-$ rhc cartridge add -a <yourapp> http://cartreflect-claytondev.rhcloud.com/github/ranib/openshift-cartridge-php
-```	
 #### (1.2) add database
 for MySQL 5.7.17 use this repo
 ```BASH
@@ -170,9 +167,28 @@ Only if you don't have local copy of <yourapp> created above
 -	`$ git remote add upstream https://github.com/ranib/openshift-scalable-wordpress`
 - `$ git pull upstream master`
 
-### 3.	edit wp-config.php for Debugging
-The following code, inserted in your wp-config.php file, will log all errors, notices, and warnings to a file called debug.log in the wp-content directory. It will also hide the errors so they do not interrupt page generation.
+### 3. edit wp-config.php file
 ```BASH
+/** change 'true' to 'false'(no SSL) */
+define('FORCE_SSL_ADMIN', false);
+
+/** or leave it as is (SSL will be limited to rhcloud domain, will have to get SSL Cert for custom domain) */
+define(‘FORCE_SSL_LOGIN’, true);
+
+/** In Nginx, to resolve "You do not have sufficient permissions to access this page" error after http(s) SSL login */
+if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https')
+	$_SERVER['HTTPS'] = 'on';
+
+/** Woocommerce plugin recommends to increase WP Memory Limit to 128MB */
+define( 'WP_MEMORY_LIMIT', '128M' );
+
+/** path to fastcgi cache directory for Nginx Helper plugin */
+define('RT_WP_NGINX_HELPER_CACHE_PATH', getenv('OPENSHIFT_TMP_DIR').'/nginx-cache');
+
+/** OPTIONAL - for Wordpress Debugging ONLY if necessary
+The following code, inserted in your wp-config.php file, will log all errors, notices, and warnings to a file called debug.log in the wp-content directory. 
+It will also hide the errors so they do not interrupt page generation. */
+
 // Enable WP_DEBUG mode
 define( 'WP_DEBUG', true );
 
@@ -186,40 +202,93 @@ define( 'WP_DEBUG_DISPLAY', false );
 // Use dev versions of core JS and CSS files (only needed if you are modifying these core files)
 define( 'SCRIPT_DEBUG', true );
 ```	
-### 4. edit wp-config.php file, change 'true' to 'false'(no SSL) in the line below
-```BASH
-define('FORCE_SSL_ADMIN', false);
-
-	or add after the line (SSL will be limited to rhcloud domain, will have to get SSL Cert for custom domain)
-
-define(‘FORCE_SSL_LOGIN’, true);
-```
-### 5. edit wp-config.php file, MUST add
-```BASH
-/** In Nginx, to resolve "You do not have sufficient permissions to access this page" error after http(s) SSL login */
-if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https')
-	$_SERVER['HTTPS'] = 'on';
-```
-### 6. edit wp-config.php file, add (before line /* That's all, stop editing! Happy blogging. */)
-```BASH
-/** Woocommerce plugin recommends to increase WP Memory Limit to 128MB */
-define( 'WP_MEMORY_LIMIT', '128M' );
-
-/** path to fastcgi cache directory for Nginx Helper plugin */
-define('RT_WP_NGINX_HELPER_CACHE_PATH', getenv('OPENSHIFT_TMP_DIR').'/nginx-cache');
-```
-### 7. edit wp-config.php file, look for following line
-- `require_once(getenv('OPENSHIFT_REPO_DIR') . '.openshift/openshift.inc');`
-- change `'.openshift/openshift.inc'` to `'.openshift/openshift.inc.erb'`
-
-### 8. fix conflicts (if any) in action_hooks/deploy
+### 4. fix conflicts (if any) in action_hooks/deploy
 and change wp root directory from `php` to `public`
 
-run this command to make `action_hooks/build` executable
+you can also use `composer` to install `wordpress themes & plugins`
+
+to make `action_hooks/build` executable run this command
 ```BASH
 $ git update-index --chmod=+x --add .openshift/action_hooks/*
 ```
-### 9. then commit
+then commit
 - `$ git add -A`
 - `$ git commit -am 'install wordpress'`
 - `$ git push`
+
+### 5. After installing Wordpress it is time to tweak Nginx for best performance
+* Edit Nginx configuration file `.openshift/nginx.conf.erb` with necessary Wordpress rules (since .htacess file used in Apache does not work in Nginx)
+* This is how `.openshift/nginx.conf.erb` file would look like
+```BASH
+# Gzip Settings
+gzip on;
+gzip_comp_level  2;
+gzip_min_length  10240;
+gzip_proxied any;
+gzip_buffers 128 8k;
+gzip_http_version 1.1;
+gzip_types
+  # text/html is always compressed by HttpGzipModule
+  text/css
+  text/x-js
+  text/javascript
+  text/richtext
+  text/xml
+  text/plain
+  text/x-component
+  text/xsd
+  text/xsl
+  application/x-javascript
+  application/javascript
+  application/json
+  application/xml
+  application/rss+xml
+  font/truetype
+  font/opentype
+  application/vnd.ms-fontobject
+  image/x-icon
+  image/svg+xml;
+  
+gzip_static on;
+gzip_proxied expired no-cache no-store private auth;
+gzip_disable "MSIE [1-6]\.";
+gzip_vary on;
+
+include <%= ENV['OPENSHIFT_REPO_DIR'] %>.openshift/wp-global/optimizations.conf;
+# Move Fastcgi-cache to RAM
+fastcgi_cache_path <%= ENV['OPENSHIFT_TMP_DIR'] %>/nginx-cache levels=1:2 keys_zone=WORDPRESS:100m inactive=60m;
+fastcgi_cache_key "$scheme$request_method$host$request_uri";
+fastcgi_cache_use_stale error timeout invalid_header http_500;
+fastcgi_ignore_headers Cache-Control Expires Set-Cookie;
+add_header X-Fastcgi-Cache $upstream_cache_status;
+
+server {
+    listen  	<%= ENV['OPENSHIFT_PHP_IP'] %>:<%= ENV['OPENSHIFT_PHP_PORT'] %>;
+    root    	<%= ENV['OPENSHIFT_REPO_DIR'] %>/public;
+	server_name	<%= ENV['OPENSHIFT_APP_DNS'] %>;
+    index  index.php index.html index.htm;
+
+	    
+    set_real_ip_from <%= ENV['OPENSHIFT_PHP_IP'] %>;
+    real_ip_header   X-Forwarded-For;
+		
+	# pass the PHP scripts to PHP-FPM
+	location ~ \.php$ {
+	fastcgi_pass unix:<%= ENV['OPENSHIFT_PHP_SOCKET'] %>;
+	fastcgi_index  index.php;
+	fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+	fastcgi_param PATH_INFO $fastcgi_script_name;
+	include <%= ENV['OPENSHIFT_PHP_DIR'] %>/usr/conf/fastcgi_params;
+	}
+	
+	#Include Requirements (put a # before include if not required/working)	
+	include <%= ENV['OPENSHIFT_REPO_DIR'] %>.openshift/wp-global/wordpress.conf;
+	include <%= ENV['OPENSHIFT_REPO_DIR'] %>.openshift/wp-global/staticfiles.conf;
+	include <%= ENV['OPENSHIFT_REPO_DIR'] %>.openshift/wp-global/restrictions.conf;
+	include <%= ENV['OPENSHIFT_REPO_DIR'] %>.openshift/wp-global/wpsecure.conf;
+	#Only if using rocket-nginx caching plugin
+	include <%= ENV['OPENSHIFT_REPO_DIR'] %>.openshift/wp-global/rocket-nginx.conf;
+	#Only if using Yoast-seo plugin
+	include <%= ENV['OPENSHIFT_REPO_DIR'] %>.openshift/wp-global/yoast-seo.conf;
+}
+```

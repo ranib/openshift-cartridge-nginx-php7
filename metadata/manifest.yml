@@ -1,13 +1,13 @@
 Name: nginx-php
 Cartridge-Short-Name: PHP
-Display-Name: Nginx-1.13.3 & PHP-7.1.7
+Display-Name: Nginx-1.13.3 & PHP-7.1.8
 License: MIT
 Version: "7"
 Versions:
 - 1.13.3
-- 7.1.7
+- 7.1.8
 Website: https://github.com/ranib/openshift-cartridge-nginx-php7
-Cartridge-Version: 7.2.4
+Cartridge-Version: 7.2.5
 Cartridge-Vendor: ranib
 Categories:
   - service
