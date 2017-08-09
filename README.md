@@ -156,7 +156,7 @@ $ rhc cartridge add phpmyadmin-4 -a <yourapp>
 ```BASH
 $ rhc cartridge add -a <yourapp> http://cartreflect-claytondev.rhcloud.com/reflect?github=ranib/openshift-redis-cart
 ```
-### 2. add Wordpress:
+### 2. add Wordpress
 
 Only if you don't have local copy of <yourapp> created above
 - `$ git clone <git-uri yourapp>`
