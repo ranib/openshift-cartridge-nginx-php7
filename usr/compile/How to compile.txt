@@ -1,0 +1,10 @@
+Compiling a new version
+
+To compile a new version you will first need a openshift application.
+
+$ rhc create-app nginx http://cartreflect-claytondev.rhcloud.com/github/ranib/openshift-cartridge-nginx
+Now clone the repository and create a nginx folder. Now copy the usr/compile directory from this repository. Now set the versions you need to compile in the nginx/compile/versions file. Make 'build' executable git update-index --chmod=+x --add nginx/compile/* Commit and push the application repository.
+
+SSH into your app rhc ssh nginx and go to the compile folder cd ${OPENSHIFT_REPO_DIR}/nginx/compile and start compiling by running the following command:
+
+./all

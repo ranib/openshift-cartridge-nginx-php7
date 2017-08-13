@@ -1,0 +1,81 @@
+#!/bin/bash
+set -e
+
+# Check arguments
+if [ -z "${1}" ]; then
+    echo "Usage: build <nginx_version>"
+    exit 1
+fi
+
+# Configure versions
+NGINX_VERSION="${1}"
+ZLIB_VERSION='1.2.11'
+PCRE_VERSION='8.41'
+PURGE_VERSION='2.3'
+HTTPREDIS_VERSION='v0.14'
+
+# package names
+pkg=nginx-${NGINX_VERSION}.tar.gz
+pkg_pcre=pcre-${PCRE_VERSION}.tar.bz2
+pkg_zlib=zlib-${ZLIB_VERSION}.tar.gz
+pkg_purge=ngx_cache_purge-2.3.tar.gz
+pkg_httpredis=ngx_http_redis-0.3.8.tar.gz
+
+# Import utils
+source build_util
+
+# Prepare build enviroment
+CURRENT_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+BUILD_DIR="${CURRENT_DIR}/tmp"
+TARGET_DIR="$(dirname "${CURRENT_DIR}")/nginx-${NGINX_VERSION}"
+
+if [ -d "${TARGET_DIR}" ]; then
+    rm -rf "${TARGET_DIR}"
+fi
+
+mkdir -p ${BUILD_DIR}
+pushd ${BUILD_DIR}
+
+# Get packages
+download_and_unpack ${pkg_pcre} ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/${pkg_pcre}
+download_and_unpack ${pkg_zlib} http://zlib.net/${pkg_zlib}
+download_and_unpack ${pkg_purge} http://labs.frickle.com/files/${pkg_purge}
+download_and_unpack ${pkg_httpredis} http://people.FreeBSD.org/~osa/${pkg_httpredis}
+download_and_unpack ${pkg} http://nginx.org/download/${pkg}
+
+# Go to source
+pushd nginx-${NGINX_VERSION}
+
+# Configuring nginx
+./configure \
+    --with-zlib=${BUILD_DIR}/zlib-${ZLIB_VERSION} \
+    --add-module=${BUILD_DIR}/ngx_cache_purge-2.3 \
+    --add-dynamic-module=${BUILD_DIR}/ngx_http_redis-0.3.8 \
+	--with-pcre=${BUILD_DIR}/pcre-${PCRE_VERSION} \
+    --with-pcre-jit \
+    --with-http_ssl_module \
+    --with-http_v2_module \
+    --with-http_secure_link_module \
+    --with-http_sub_module \
+    --with-http_stub_status_module \
+    --with-http_realip_module \
+    --with-http_gunzip_module \
+    --with-http_gzip_static_module \
+    --with-http_image_filter_module \
+    --with-ipv6 \
+    --prefix=${TARGET_DIR}
+
+# Compiling nginx
+make install
+
+# Clean build enviroment
+popd
+popd
+rm -rf ${BUILD_DIR}
+
+# Package version
+pushd "$(dirname "${TARGET_DIR}")"
+tar -cvzf "${OPENSHIFT_REPO_DIR}/public/nginx-${NGINX_VERSION}.tar.gz" "$( basename "${TARGET_DIR}")"
+popd
+
+exit 0

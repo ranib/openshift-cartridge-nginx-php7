@@ -10,6 +10,9 @@
 # max_clients = worker_processes * worker_connections
 worker_processes 2;
 
+# Dynamically Load Redis NGINX Module
+load_module <%= ENV['OPENSHIFT_PHP_DIR'] %>/usr/ext/ngx_http_redis_module.so;
+
 # Maximum file descriptors that can be opened per process
 # This should be > worker_connections
 worker_rlimit_nofile 8192;

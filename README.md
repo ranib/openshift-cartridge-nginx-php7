@@ -5,7 +5,7 @@
 <img src="https://raw.githubusercontent.com/ranib/openshift-cartridge-nginx-php7/master/usr/openshift-redhat.jpg"><br />Welcome to the world of [PHP-FPM](http://php.net/manual/en/book.fpm.php) within [OPENSHIFT](https://www.openshift.com/) by [REDHAT](https://www.redhat.com/en).
 
 ## What's inside
-* Nginx: 1.13.3
+* Nginx: 1.13.3 (compiled with ngx_http_redis_module)
 * PHP: 7.1.8
 * Latest Composer
 
@@ -30,73 +30,6 @@ Make sure to have your backup just in case some things went wrong.
 ### Nginx
 Nginx will automatically include `.openshift/nginx.conf.erb` file.
 
-#### Best nginx configuration for Laravel users
-Edit file `.openshift/nginx.conf.erb` to looks like this
-```
-# Enable Gzip
-gzip  on;
-gzip_http_version 1.0;
-gzip_comp_level 2;
-gzip_min_length 1100;
-gzip_buffers     4 8k;
-gzip_proxied any;
-gzip_types
-# text/html is always compressed by HttpGzipModule
-text/css
-text/javascript
-text/xml
-text/plain
-text/x-component
-application/javascript
-application/json
-application/xml
-application/rss+xml
-font/truetype
-font/opentype
-application/vnd.ms-fontobject
-image/svg+xml;
-gzip_static on;
-gzip_proxied        expired no-cache no-store private auth;
-gzip_disable        "MSIE [1-6]\.";
-gzip_vary           on;
-
-client_max_body_size 8M;
-
-server {
-
-    	listen  <%= ENV['OPENSHIFT_PHP_IP'] %>:<%= ENV['OPENSHIFT_PHP_PORT'] %>;
-    	root    <%= ENV['OPENSHIFT_REPO_DIR'] %>/public;
-	
-	location ~* ^.+\.(css|js|jpg|jpeg|gif|png|ico|gz|svg|svgz|ttf|otf|woff|eot|mp4|ogg|ogv|webm)$ {
-		access_log off;
-		log_not_found off;
-
-		# Some basic cache-control for static files to be sent to the browser
-		expires max;
-		add_header Pragma public;
-		add_header Cache-Control "public, must-revalidate, proxy-revalidate";
-	}
-	
-	location @rewrites {
-    	rewrite ^(.*)$ /index.php/$1 last;
-    }
-	
-    location / {
-    	index index.php  index.html index.htm;
-		try_files $uri $uri/ @rewrites;
-    }
-	
-	# pass the PHP scripts to PHP-FPM
-	location ~ ^/index\.php(/|$) {
-    	fastcgi_pass unix:<%= ENV['OPENSHIFT_PHP_SOCKET'] %>;
-    	fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-    	fastcgi_param PATH_INFO $fastcgi_script_name;
-    	include <%= ENV['OPENSHIFT_PHP_DIR'] %>/usr/conf/fastcgi_params;
-	}
-	# Add trailing slash to */wp-admin requests.
-		rewrite /wp-admin$ $scheme://$host$uri/ permanent;
-}
-```
 ### PHP-FPM
 PHP-FPM will automatically load `.openshift/php-fpm.ini.erb`, `.openshift/php-fpm.conf.erb`, and `.openshift/extension.ini.erb` files.
 
@@ -133,6 +66,28 @@ This cartridge comes with different scripts for easy management of your app insi
     * `php-pecl install <name> <ver>` - Install pecl extension
     * `php-pecl uninstall <name>` - Uninstall pecl extension
 
+## Compiling a new version
+
+* To compile a new version create a new openshift application (or use existing one).
+	* `$ rhc create-app <yourapp> http://cartreflect-claytondev.rhcloud.com/github/ranib/openshift-cartridge-nginx-php7`
+	* Now clone <yourapp> and create `nginx` folder. 
+	* Now copy openshift-cartridge-nginx-php7/usr/`compile` folder and paste into `nginx` folder
+	* Now set the versions you need to compile in the nginx/compile/`versions` file. 
+	* Edit `build` if required and make it executable `git update-index --chmod=+x --add nginx/compile/*` 
+	* Commit and push <yourapp>
+
+* SSH into your app `rhc ssh <yourapp>` and go to the compile folder `cd ${OPENSHIFT_REPO_DIR}/nginx/compile` and start compiling by running the following command: `./all`
+
+* Once compiling is done download `nginx-{version}.tar.gz` from <yourapp>`/public` directory.
+	* Extract `nginx-{version}.tar.gz` and place only `nginx` file into openshift-cartridge-nginx-php7/usr/`sbin` folder.
+	* place (if created) `nginx-module.so` file from `module` folder into openshift-cartridge-nginx-php7/usr/`ext` folder.
+	* If modified compile/`build` before compiling, copy and place it into openshift-cartridge-nginx-php7/usr/`compile` folder.
+	* Delete the `nginx-{version}` locally and from <yourapp>`/public` directory, you do not need any more.
+	* Change permissions to make `nginx` executable `git update-index --chmod=+x --add usr/sbin/nginx`
+	* Change permissions to make `nginx-module.so` executable `git update-index --chmod=+x --add usr/ext/nginx-module.so`
+	* Modify the value of NGINX_VERSION in /metadata/`manifest.yml` (if required) in /bin/`setup`
+	* Commit and push
+	
 ## Build nginx wordpress
 ### 1. create an app:
 #### (1.1) create nginx app with php cartridge (if scalable, require more than 1 gear, use -s, otherwise remove -s)
@@ -163,8 +118,8 @@ Only if you don't have local copy of <yourapp> created above
 - then change to <yourapp> dir
 - `$ cd <yourapp>`
 - `$ git remote add upstream https://github.com/ranib/wordpress-example`
--	for scalable (only if app created using -s)
--	`$ git remote add upstream https://github.com/ranib/openshift-scalable-wordpress`
+-	 for scalable (only if app created using -s)
+-   `$ git remote add upstream https://github.com/ranib/openshift-scalable-wordpress`
 - `$ git pull upstream master`
 
 ### 3. edit wp-config.php file
@@ -218,77 +173,3 @@ then commit
 
 ### 5. After installing Wordpress it is time to tweak Nginx for best performance
 * Edit Nginx configuration file `.openshift/nginx.conf.erb` with necessary Wordpress rules (since .htacess file used in Apache does not work in Nginx)
-* This is how `.openshift/nginx.conf.erb` file would look like
-```BASH
-# Gzip Settings
-gzip on;
-gzip_comp_level  2;
-gzip_min_length  10240;
-gzip_proxied any;
-gzip_buffers 128 8k;
-gzip_http_version 1.1;
-gzip_types
-  # text/html is always compressed by HttpGzipModule
-  text/css
-  text/x-js
-  text/javascript
-  text/richtext
-  text/xml
-  text/plain
-  text/x-component
-  text/xsd
-  text/xsl
-  application/x-javascript
-  application/javascript
-  application/json
-  application/xml
-  application/rss+xml
-  font/truetype
-  font/opentype
-  application/vnd.ms-fontobject
-  image/x-icon
-  image/svg+xml;
-  
-gzip_static on;
-gzip_proxied expired no-cache no-store private auth;
-gzip_disable "MSIE [1-6]\.";
-gzip_vary on;
-
-include <%= ENV['OPENSHIFT_REPO_DIR'] %>.openshift/wp-global/optimizations.conf;
-# Move Fastcgi-cache to RAM
-fastcgi_cache_path <%= ENV['OPENSHIFT_TMP_DIR'] %>/nginx-cache levels=1:2 keys_zone=WORDPRESS:100m inactive=60m;
-fastcgi_cache_key "$scheme$request_method$host$request_uri";
-fastcgi_cache_use_stale error timeout invalid_header http_500;
-fastcgi_ignore_headers Cache-Control Expires Set-Cookie;
-add_header X-Fastcgi-Cache $upstream_cache_status;
-
-server {
-    listen  	<%= ENV['OPENSHIFT_PHP_IP'] %>:<%= ENV['OPENSHIFT_PHP_PORT'] %>;
-    root    	<%= ENV['OPENSHIFT_REPO_DIR'] %>/public;
-	server_name	<%= ENV['OPENSHIFT_APP_DNS'] %>;
-    index  index.php index.html index.htm;
-
-	    
-    set_real_ip_from <%= ENV['OPENSHIFT_PHP_IP'] %>;
-    real_ip_header   X-Forwarded-For;
-		
-	# pass the PHP scripts to PHP-FPM
-	location ~ \.php$ {
-	fastcgi_pass unix:<%= ENV['OPENSHIFT_PHP_SOCKET'] %>;
-	fastcgi_index  index.php;
-	fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-	fastcgi_param PATH_INFO $fastcgi_script_name;
-	include <%= ENV['OPENSHIFT_PHP_DIR'] %>/usr/conf/fastcgi_params;
-	}
-	
-	#Include Requirements (put a # before include if not required/working)	
-	include <%= ENV['OPENSHIFT_REPO_DIR'] %>.openshift/wp-global/wordpress.conf;
-	include <%= ENV['OPENSHIFT_REPO_DIR'] %>.openshift/wp-global/staticfiles.conf;
-	include <%= ENV['OPENSHIFT_REPO_DIR'] %>.openshift/wp-global/restrictions.conf;
-	include <%= ENV['OPENSHIFT_REPO_DIR'] %>.openshift/wp-global/wpsecure.conf;
-	#Only if using rocket-nginx caching plugin
-	include <%= ENV['OPENSHIFT_REPO_DIR'] %>.openshift/wp-global/rocket-nginx.conf;
-	#Only if using Yoast-seo plugin
-	include <%= ENV['OPENSHIFT_REPO_DIR'] %>.openshift/wp-global/yoast-seo.conf;
-}
-```
