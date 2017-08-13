@@ -70,23 +70,23 @@ This cartridge comes with different scripts for easy management of your app insi
 
 * To compile a new version create a new openshift application (or use existing one).
 	* `$ rhc create-app <yourapp> http://cartreflect-claytondev.rhcloud.com/github/ranib/openshift-cartridge-nginx-php7`
-	* Now clone <yourapp> and create `nginx` folder. 
+	* Now `git clone <yourapp>` and create `nginx` folder. 
 	* Now copy openshift-cartridge-nginx-php7/usr/`compile` folder and paste into `nginx` folder
 	* Now set the versions you need to compile in the nginx/compile/`versions` file. 
 	* Edit `build` if required and make it executable `git update-index --chmod=+x --add nginx/compile/*` 
-	* Commit and push <yourapp>
+	* Commit and push `<yourapp>`
 
 * SSH into your app `rhc ssh <yourapp>` and go to the compile folder `cd ${OPENSHIFT_REPO_DIR}/nginx/compile` and start compiling by running the following command: `./all`
 
-* Once compiling is done download `nginx-{version}.tar.gz` from <yourapp>`/public` directory.
+* Once compiling is done download `nginx-{version}.tar.gz` from `<yourapp>/public` directory.
 	* Extract `nginx-{version}.tar.gz` and place only `nginx` file into openshift-cartridge-nginx-php7/usr/`sbin` folder.
 	* place (if created) `nginx-module.so` file from `module` folder into openshift-cartridge-nginx-php7/usr/`ext` folder.
 	* If modified compile/`build` before compiling, copy and place it into openshift-cartridge-nginx-php7/usr/`compile` folder.
-	* Delete the `nginx-{version}` locally and from <yourapp>`/public` directory, you do not need any more.
+	* Delete the `nginx-{version}` locally and from `<yourapp>/public` directory, you do not need any more.
 	* Change permissions to make `nginx` executable `git update-index --chmod=+x --add usr/sbin/nginx`
 	* Change permissions to make `nginx-module.so` executable `git update-index --chmod=+x --add usr/ext/nginx-module.so`
 	* Modify the value of NGINX_VERSION in /metadata/`manifest.yml` (if required) in /bin/`setup`
-	* Commit and push
+	* Commit and push `<openshift-cartridge-nginx-php7>`
 	
 ## Build nginx wordpress
 ### 1. create an app:
